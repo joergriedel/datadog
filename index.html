@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ops Dashboard Plugin</title>
+    <style>
+        :root {
+            --dd-purple: #632CA6;
+            --dd-bg: #F5F5F5;
+            --dd-card: #FFFFFF;
+            --dd-text: #333333;
+            --status-green: #2ecc71;
+            --status-red: #e74c3c;
+            --status-orange: #f39c12;
+            --border-color: #E1E1E1;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--dd-bg);
+            color: var(--dd-text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--dd-purple);
+            padding-bottom: 10px;
+        }
+
+        /* KPI Section */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background: var(--dd-card);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-color: var(--dd-purple);
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .kpi-label {
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-ok { color: var(--status-green); }
+        .status-crit { color: var(--status-red); }
+
+        /* Incident List */
+        .incident-list {
+            background: var(--dd-card);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .incident-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .incident-item:last-child { border-bottom: none; }
+
+        .incident-meta {
+            display: flex;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: white;
+        }
+
+        .badge-splunk { background-color: #000; }
+        .badge-dd { background-color: var(--dd-purple); }
+
+        /* Dashboard View (Iframe) */
+        .dashboard-view {
+            margin-top: 30px;
+            height: 600px;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <header>
+        <h2>System Overview</h2>
+        <div style="font-size: 0.9rem;">Last updated: <span id="timestamp">Just now</span></div>
+    </header>
+
+    <div class="kpi-grid">
+        <a href="#details" class="kpi-card">
+            <span class="kpi-label">System Status</span>
+            <span class="kpi-value status-ok">99.9%</span>
+        </a>
+        <a href="#alerts" class="kpi-card">
+            <span class="kpi-label">Critical Alerts</span>
+            <span class="kpi-value status-crit">3</span>
+        </a>
+        <a href="#details" class="kpi-card">
+            <span class="kpi-label">Avg Latency</span>
+            <span class="kpi-value">142ms</span>
+        </a>
+    </div>
+
+    <div class="incident-list" id="alerts">
+        <h3 style="margin-top: 0;">Active Critical Alerts</h3>
+        
+        <div class="incident-item">
+            <span><strong>High Error Rate:</strong> cart-service-api</span>
+            <div class="incident-meta">
+                <a href="https://app.datadoghq.com/event/stream" target="_blank" class="badge badge-dd">DataDog</a>
+                <a href="https://splunk.yourcompany.com" target="_blank" class="badge badge-splunk">Splunk</a>
+            </div>
+        </div>
+
+        <div class="incident-item">
+            <span><strong>Memory Usage:</strong> checkout-db-01 (92%)</span>
+            <div class="incident-meta">
+                <a href="#" class="badge badge-dd">DataDog</a>
+                <a href="#" class="badge badge-splunk">Splunk</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="details" class="dashboard-view">
+        <iframe 
+            src="about:blank" 
+            width="100%" 
+            height="100%" 
+            frameborder="0" 
+            style="border:0"
+            title="Datadog Dashboard">
+            Placeholder: Connect your Datadog Public/Private Embed URL here.
+        </iframe>
+    </div>
+</div>
+
+<script>
+    // Update timestamp
+    document.getElementById('timestamp').innerText = new Date().toLocaleTimeString();
+
+    // Example: Click KPI to update the iframe source
+    document.querySelectorAll('.kpi-card').forEach(card => {
+        card.addEventListener('click', function(e) {
+            console.log("Navigating to detail view for: " + this.innerText);
+            // In a real app, you might change the iframe src here:
+            // document.querySelector('iframe').src = "https://p.datadoghq.com/sb/your-id-here";
+        });
+    });
+</script>
+
+</body>
+</html>
