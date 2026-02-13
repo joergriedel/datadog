@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Datadog Interactive Health Dashboard</title>
+    <title>Datadog Plugin - Drill-Down Dashboard</title>
     <style>
         :root {
             --dd-bg: #f5f5f5;
@@ -16,161 +16,104 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
             background-color: var(--dd-bg);
-            margin: 0; padding: 15px;
+            margin: 0; padding: 20px;
             color: var(--dd-text);
         }
+
+        /* Container & Grid */
+        #main-view, #detail-view { transition: opacity 0.3s ease; }
+        .hidden { display: none; }
 
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
+            gap: 12px;
         }
 
-        /* KPI & Cards */
-        .card { background: var(--dd-card); border: 1px solid var(--border); padding: 12px; border-radius: 2px; }
-        .span-2 { grid-column: span 2; }
-        .slo-label { font-size: 0.75rem; color: #777; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; display: block;}
+        /* SLO Header */
+        .slo-bar {
+            grid-column: span 4;
+            background: var(--dd-card);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--dd-purple);
+            display: flex;
+            padding: 10px;
+            margin-bottom: 5px;
+        }
+        .slo-item { flex: 1; text-align: center; border-right: 1px solid #eee; }
+        .slo-val { font-size: 1.1rem; font-weight: bold; color: var(--status-ok); display: block; }
+        .label-tiny { font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: bold; }
 
+        /* KPI Tiles */
         .kpi-tile {
-            padding: 15px; color: white; cursor: pointer;
+            padding: 20px;
+            border-radius: 2px;
+            color: white;
+            cursor: pointer;
+            position: relative;
             transition: transform 0.1s;
         }
-        .kpi-tile:active { transform: scale(0.98); }
+        .kpi-tile:hover { filter: brightness(1.1); transform: translateY(-2px); }
         .kpi-tile .val { font-size: 2.5rem; font-weight: bold; display: block; }
         .bg-ok { background-color: var(--status-ok); }
         .bg-warn { background-color: var(--status-warn); }
         .bg-crit { background-color: var(--status-crit); }
 
+        /* Detail View Elements */
+        .detail-header {
+            display: flex; align-items: center; gap: 20px; margin-bottom: 20px;
+        }
+        .back-btn {
+            background: var(--dd-purple); color: white; border: none;
+            padding: 8px 15px; border-radius: 4px; cursor: pointer;
+        }
+        .chart-container {
+            background: white; border: 1px solid var(--border);
+            padding: 20px; border-radius: 4px; height: 300px;
+            position: relative; display: flex; align-items: flex-end; gap: 5px;
+        }
+        .bar {
+            flex: 1; background: var(--dd-purple); opacity: 0.7;
+            transition: height 0.5s ease;
+        }
+        .chart-y-axis {
+            position: absolute; left: 10px; top: 10px; font-size: 0.7rem; color: #999;
+        }
+
         /* Health Map */
-        .health-grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 4px;
-        }
-        .health-box { 
-            width: 100%; aspect-ratio: 1; border-radius: 1px; cursor: pointer;
-            transition: opacity 0.2s;
-        }
-        .health-box:hover { outline: 2px solid #333; opacity: 0.8; }
-
-        /* Detail Overlay / Drawer */
-        #detailPanel {
-            position: fixed; top: 0; right: -400px; width: 350px; height: 100%;
-            background: white; box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-            transition: right 0.3s ease; padding: 20px; z-index: 100;
-            border-left: 4px solid var(--dd-purple);
-        }
-        #detailPanel.active { right: 0; }
-        .close-btn { cursor: pointer; float: right; font-size: 1.5rem; }
-
-        .instance-list { margin-top: 20px; }
-        .instance-item { 
-            padding: 10px; border-bottom: 1px solid #eee; 
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .badge { 
-            padding: 4px 8px; border-radius: 3px; font-size: 0.7rem; 
-            text-decoration: none; color: white; font-weight: bold;
-        }
-        .badge-dd { background: var(--dd-purple); }
-        .badge-splunk { background: #000; }
-
-        /* Log Explorer (Dark Mode) */
-        .log-explorer {
-            grid-column: span 4; background: #1a1a1a; color: #00ff00;
-            font-family: monospace; padding: 10px; font-size: 0.8rem;
-            max-height: 120px; overflow-y: auto; border-radius: 2px;
-        }
+        .card { background: white; border: 1px solid var(--border); padding: 15px; }
+        .health-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
+        .health-box { width: 100%; aspect-ratio: 1; border-radius: 1px; }
     </style>
 </head>
 <body>
 
-<div class="dashboard-grid">
-    <div class="kpi-tile bg-ok">
-        <span class="slo-label" style="color:white">Requests/s</span>
-        <span class="val">8.2k</span>
-    </div>
-    <div class="kpi-tile bg-crit">
-        <span class="slo-label" style="color:white">Errors</span>
-        <span class="val">14.2%</span>
-    </div>
-    <div class="kpi-tile bg-warn">
-        <span class="slo-label" style="color:white">Latency</span>
-        <span class="val">2.8s</span>
-    </div>
-    <div class="kpi-tile bg-ok">
-        <span class="slo-label" style="color:white">Uptime</span>
-        <span class="val">99.9%</span>
-    </div>
-
-    <div class="card span-2">
-        <span class="slo-label">Service Health Map: Auth-Service (40 Nodes)</span>
-        <div class="health-grid" id="healthMap"></div>
-    </div>
-
-    <div class="card span-2">
-        <span class="slo-label">System Logs (Live)</span>
-        <div class="log-explorer" id="logStream">
-            <div>[INFO] Checksum verified for node_04...</div>
-            <div style="color:var(--status-crit)">[ERROR] Connection refused: db-master:5432</div>
+<div id="main-view">
+    <div class="dashboard-grid">
+        <div class="slo-bar">
+            <div class="slo-item"><span class="label-tiny">Uptime</span><span class="slo-val">99.99%</span></div>
+            <div class="slo-item"><span class="label-tiny">Error Budget</span><span class="slo-val">99.91%</span></div>
+            <div class="slo-item" style="border:none"><span class="label-tiny">Latency P95</span><span class="slo-val" style="color:var(--status-warn)">240ms</span></div>
         </div>
-    </div>
-</div>
 
-<div id="detailPanel">
-    <span class="close-btn" onclick="closePanel()">&times;</span>
-    <h3 id="panelTitle">Node Details</h3>
-    <hr>
-    <div id="panelContent" class="instance-list">
+        <div class="kpi-tile bg-ok" onclick="openDetail('Requests per Second', 'bg-ok', '8.4k')">
+            <span class="label-tiny" style="color:white">Throughput</span>
+            <span class="val">8.4k</span>
         </div>
-</div>
+        <div class="kpi-tile bg-crit" onclick="openDetail('Error Rate %', 'bg-crit', '14.2%')">
+            <span class="label-tiny" style="color:white">Errors</span>
+            <span class="val">14.2%</span>
+        </div>
+        <div class="kpi-tile bg-warn" onclick="openDetail('Average Latency', 'bg-warn', '3.5s')">
+            <span class="label-tiny" style="color:white">Latency</span>
+            <span class="val">3.5s</span>
+        </div>
+        <div class="kpi-tile bg-ok" onclick="openDetail('CPU Utilization', 'bg-ok', '42%')">
+            <span class="label-tiny" style="color:white">Resource</span>
+            <span class="val">42%</span>
+        </div>
 
-<script>
-    const map = document.getElementById('healthMap');
-    const panel = document.getElementById('detailPanel');
-    const content = document.getElementById('panelContent');
-
-    // Erstelle 40 Boxen mit zufälligem Status
-    for(let i=1; i<=40; i++) {
-        const div = document.createElement('div');
-        const rand = Math.random();
-        let status = 'bg-ok';
-        if(rand > 0.85) status = 'bg-crit';
-        else if(rand > 0.7) status = 'bg-warn';
-
-        div.className = `health-box ${status}`;
-        div.onclick = () => showDetails(i, status);
-        map.appendChild(div);
-    }
-
-    function showDetails(id, status) {
-        panel.classList.add('active');
-        const statusText = status === 'bg-crit' ? 'CRITICAL' : (status === 'bg-warn' ? 'WARNING' : 'HEALTHY');
-        const color = status === 'bg-crit' ? 'var(--status-crit)' : (status === 'bg-warn' ? 'var(--status-warn)' : 'var(--status-ok)');
-        
-        document.getElementById('panelTitle').innerHTML = `Node #${id} <span style="color:${color}">(${statusText})</span>`;
-        
-        content.innerHTML = `
-            <div class="instance-item">
-                <div><strong>Service:</strong> auth-service-v2</div>
-                <div><a href="#" class="badge badge-dd">DataDog</a></div>
-            </div>
-            <div class="instance-item">
-                <div><strong>Logs:</strong> View Traces</div>
-                <div><a href="#" class="badge badge-splunk">Splunk</a></div>
-            </div>
-            <div style="margin-top:20px; font-size:0.85rem; color:#666;">
-                <strong>Mögliche Ursache:</strong> ${status === 'bg-crit' ? 'Memory Leak detektiert. Heap Usage > 95%.' : 'Latenz über Schwellenwert (P99).'}
-            </div>
-        `;
-    }
-
-    function closePanel() {
-        panel.classList.remove('active');
-    }
-</script>
-
-</body>
-</html>
+        <div class="card" style="grid-column: span 2;">
+            <span class="label-tiny">Service Health Map</span>
