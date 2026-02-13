@@ -1,200 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ops Dashboard Plugin</title>
+    <title>Datadog Custom Ops Plugin</title>
     <style>
         :root {
-            --dd-purple: #632CA6;
-            --dd-bg: #F5F5F5;
-            --dd-card: #FFFFFF;
+            --dd-bg: #f5f5f5;
+            --dd-card: #ffffff;
             --dd-text: #333333;
-            --status-green: #2ecc71;
-            --status-red: #e74c3c;
-            --status-orange: #f39c12;
-            --border-color: #E1E1E1;
+            --status-ok: #2ecc71;
+            --status-warn: #f39c12;
+            --status-crit: #e74c3c;
+            --status-nodata: #95a5a6;
+            --dd-purple: #632CA6;
+            --border: #e1e1e1;
         }
 
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--dd-bg);
+            margin: 0; padding: 15px;
             color: var(--dd-text);
-            margin: 0;
-            padding: 20px;
         }
 
-        .dashboard-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid var(--dd-purple);
-            padding-bottom: 10px;
-        }
-
-        /* KPI Section */
-        .kpi-grid {
+        .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .kpi-card {
-            background: var(--dd-card);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .kpi-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border-color: var(--dd-purple);
-        }
-
-        .kpi-value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            display: block;
-        }
-
-        .kpi-label {
-            font-size: 0.8rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .status-ok { color: var(--status-green); }
-        .status-crit { color: var(--status-red); }
-
-        /* Incident List */
-        .incident-list {
-            background: var(--dd-card);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 15px;
-        }
-
-        .incident-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 10px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .incident-item:last-child { border-bottom: none; }
-
-        .incident-meta {
-            display: flex;
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
         }
 
-        .badge {
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-decoration: none;
-            color: white;
-        }
-
-        .badge-splunk { background-color: #000; }
-        .badge-dd { background-color: var(--dd-purple); }
-
-        /* Dashboard View (Iframe) */
-        .dashboard-view {
-            margin-top: 30px;
-            height: 600px;
-            background: #eee;
+        /* SLO Section */
+        .slo-container {
+            grid-column: span 4;
+            background: var(--dd-card);
+            border: 1px solid var(--border);
+            padding: 10px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            border: 1px dashed #ccc;
+            justify-content: space-around;
+            border-top: 3px solid var(--dd-purple);
         }
+
+        .slo-item { text-align: center; flex: 1; border-right: 1px solid #eee; }
+        .slo-item:last-child { border-right: none; }
+        .slo-val { font-size: 1.2rem; font-weight: bold; color: var(--status-ok); display: block; }
+        .slo-label { font-size: 0.7rem; color: #777; text-transform: uppercase; }
+
+        /* KPI Kacheln wie im Screen */
+        .kpi-tile {
+            padding: 15px;
+            border-radius: 2px;
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.2s;
+            position: relative;
+        }
+        .kpi-tile:hover { opacity: 0.9; }
+        .kpi-tile .val { font-size: 2.8rem; font-weight: bold; display: block; margin: 5px 0; }
+        .kpi-tile .label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+        .kpi-tile .sub { font-size: 0.9rem; opacity: 0.8; }
+
+        .bg-ok { background-color: var(--status-ok); }
+        .bg-warn { background-color: var(--status-warn); }
+        .bg-crit { background-color: var(--status-crit); }
+
+        /* Service Health Map */
+        .card { background: var(--dd-card); border: 1px solid var(--border); padding: 12px; }
+        .span-2 { grid-column: span 2; }
+
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+            margin-top: 10px;
+        }
+        .health-box { width: 100%; aspect-ratio: 1; border-radius: 1px; }
+
+        /* Resource Rings (Simulation) */
+        .resource-flex { display: flex; justify-content: space-around; align-items: center; height: 100px; }
+        .ring {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            border: 8px solid #eee;
+            border-top: 8px solid var(--dd-purple);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.9rem;
+        }
+
+        /* Log Explorer Mock */
+        .log-explorer {
+            grid-column: span 4;
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 10px;
+            font-size: 0.8rem;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .log-entry span { color: #e74c3c; } /* Highlight errors */
+
     </style>
 </head>
 <body>
 
-<div class="dashboard-container">
-    <header>
-        <h2>System Overview</h2>
-        <div style="font-size: 0.9rem;">Last updated: <span id="timestamp">Just now</span></div>
-    </header>
-
-    <div class="kpi-grid">
-        <a href="#details" class="kpi-card">
-            <span class="kpi-label">System Status</span>
-            <span class="kpi-value status-ok">99.9%</span>
-        </a>
-        <a href="#alerts" class="kpi-card">
-            <span class="kpi-label">Critical Alerts</span>
-            <span class="kpi-value status-crit">3</span>
-        </a>
-        <a href="#details" class="kpi-card">
-            <span class="kpi-label">Avg Latency</span>
-            <span class="kpi-value">142ms</span>
-        </a>
-    </div>
-
-    <div class="incident-list" id="alerts">
-        <h3 style="margin-top: 0;">Active Critical Alerts</h3>
-        
-        <div class="incident-item">
-            <span><strong>High Error Rate:</strong> cart-service-api</span>
-            <div class="incident-meta">
-                <a href="https://app.datadoghq.com/event/stream" target="_blank" class="badge badge-dd">DataDog</a>
-                <a href="https://splunk.yourcompany.com" target="_blank" class="badge badge-splunk">Splunk</a>
-            </div>
+<div class="dashboard-grid">
+    
+    <div class="slo-container">
+        <div class="slo-item">
+            <span class="slo-label">SLO: Application Uptime</span>
+            <span class="slo-val">99.999%</span>
         </div>
-
-        <div class="incident-item">
-            <span><strong>Memory Usage:</strong> checkout-db-01 (92%)</span>
-            <div class="incident-meta">
-                <a href="#" class="badge badge-dd">DataDog</a>
-                <a href="#" class="badge badge-splunk">Splunk</a>
-            </div>
+        <div class="slo-item">
+            <span class="slo-label">SLO: Error Budget</span>
+            <span class="slo-val">99.992%</span>
+        </div>
+        <div class="slo-item">
+            <span class="slo-label">Global Availability</span>
+            <span class="slo-val" style="color:var(--status-warn)">91.99%</span>
         </div>
     </div>
 
-    <div id="details" class="dashboard-view">
-        <iframe 
-            src="about:blank" 
-            width="100%" 
-            height="100%" 
-            frameborder="0" 
-            style="border:0"
-            title="Datadog Dashboard">
-            Placeholder: Connect your Datadog Public/Private Embed URL here.
-        </iframe>
+    <a href="#" class="kpi-tile bg-ok">
+        <div class="label">Avg Requests / Sec</div>
+        <div class="val">7.6 <small style="font-size: 1rem">hits</small></div>
+    </a>
+
+    <a href="#" class="kpi-tile bg-crit">
+        <div class="label">Error Rate %</div>
+        <div class="val">29.49%</div>
+    </a>
+
+    <a href="#" class="kpi-tile bg-warn">
+        <div class="label">Average Latency</div>
+        <div class="val">3.54s</div>
+    </a>
+
+    <a href="#" class="kpi-tile bg-ok">
+        <div class="label">Inventory Items</div>
+        <div class="val">14k</div>
+    </a>
+
+    <div class="card span-2">
+        <div class="slo-label">Resource Utilization</div>
+        <div class="resource-flex">
+            <div class="ring" style="border-top-color: #3498db;">65%</div>
+            <div class="ring" style="border-top-color: #f39c12;">78%</div>
+            <div style="font-size: 1.5rem; font-weight: bold;">40%</div>
+        </div>
     </div>
+
+    <div class="card span-2">
+        <div class="slo-label">Service Health Map: Auth-Service</div>
+        <div class="health-grid" id="healthMap">
+            </div>
+    </div>
+
+    <div class="log-explorer">
+        <div class="log-entry">[ERROR] <span>500</span> - POST /api/v1/checkout - timeout after 3000ms</div>
+        <div class="log-entry">[WARN] DB connection pool reaching limit (92/100)</div>
+        <div class="log-entry">[INFO] auth-service instance rebooted successfully</div>
+        <div class="log-entry">[ERROR] <span>404</span> - GET /assets/favicon.ico</div>
+        <div class="log-entry">[INFO] SLO check: healthy</div>
+    </div>
+
 </div>
 
 <script>
-    // Update timestamp
-    document.getElementById('timestamp').innerText = new Date().toLocaleTimeString();
+    // Generiere zufällige Health-Map wie im Screenshot
+    const map = document.getElementById('healthMap');
+    const statuses = ['bg-ok', 'bg-ok', 'bg-ok', 'bg-ok', 'bg-warn', 'bg-crit', 'bg-ok', 'bg-ok'];
+    
+    for(let i=0; i<40; i++) {
+        const div = document.createElement('div');
+        div.className = 'health-box ' + statuses[Math.floor(Math.random() * statuses.length)];
+        map.appendChild(div);
+    }
 
-    // Example: Click KPI to update the iframe source
-    document.querySelectorAll('.kpi-card').forEach(card => {
-        card.addEventListener('click', function(e) {
-            console.log("Navigating to detail view for: " + this.innerText);
-            // In a real app, you might change the iframe src here:
-            // document.querySelector('iframe').src = "https://p.datadoghq.com/sb/your-id-here";
-        });
+    // Einfacher Klick-Handler für Details
+    document.querySelectorAll('.kpi-tile, .card').forEach(item => {
+        item.onclick = () => {
+            alert("Navigiere zu Datadog Detail-Dashboard für: " + item.innerText.split('\n')[0]);
+        };
     });
 </script>
 
